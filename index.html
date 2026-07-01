@@ -497,6 +497,33 @@ body.light-theme .flabel, body.light-theme .pemail, body.light-theme .label{ col
  color: #1a2340;
  border-bottom-color: #1a2340;
 }
+.welcome-header {
+    text-align: center; /* Single line code for center alignment */
+    margin-bottom: 25px; /* Input box se proper distance ke liye */
+    position: relative;
+}
+
+.welcome-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #ffffff; /* White text background par clear dikhega */
+    letter-spacing: 1px;
+    margin: 0;
+    text-transform: capitalize;
+}
+
+/* Mast Mini Art Line Jo Welcome Ke Niche Center Me Dikhegi */
+.welcome-art-line {
+    width: 45px;
+    height: 3px;
+    background: linear-gradient(to right, #a3b899, #ffffff); 
+    margin: 6px auto 0 auto; /* Center alignment automatically */
+    border-radius: 10px;
+    opacity: 0.8;
+}
+
+ 
 
 /* Logo / brand mark on login */
 .auth-logo {
@@ -898,6 +925,10 @@ body.light-theme .flabel, body.light-theme .pemail, body.light-theme .label{ col
  <div class="auth-card-wrap">
   <div class="auth-card">
    <!-- Log In Panel -->
+   <div class="welcome-header">
+    <h1 class="welcome-title">Welcome</h1>
+    <div class="welcome-art-line"></div>
+</div>
    <div id="loginPanel" class="auth-body">
     <div class="auth-field">
      <label>Your Email</label>
@@ -3431,11 +3462,11 @@ function updateFirebaseStatus(isConnected) {
  if (isConnected) {
    indicator.classList.remove('disconnected');
    indicator.classList.add('connected');
-   statusText.textContent = 'Firebase ✓';
+   statusText.textContent = '✓';
  } else {
    indicator.classList.remove('connected');
    indicator.classList.add('disconnected');
-   statusText.textContent = 'Firebase ✗';
+   statusText.textContent = '✗';
  }
 }
 

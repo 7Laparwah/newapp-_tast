@@ -1,6 +1,6 @@
 {
- "name": "Wallet - Payment Tracker",
- "short_name": "Wallet",
+ "name": "Ex-Tracker",
+ "short_name": "Notes",
  "description": "Track your payments and receipts easily",
  "start_url": "./index.html",
  "scope": "./",

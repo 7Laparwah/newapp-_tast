@@ -9,6 +9,7 @@
 <!-- app refresh code  -->
 <meta http-equiv="refresh" content="201">
 
+
 <!-- Fonts: preconnect + display=swap so text shows instantly with fallback font -->
 <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1205,16 +1206,12 @@ body.light-theme .flabel, body.light-theme .pemail, body.light-theme .label{ col
  <div class="greet">
  <div class="greet">
     <h1 id="greetingText">Morning Dharm</h1>
-    <div class="sub"> 
+    <div class="sub">
         <i class="ti ti-calendar"></i>
         <span id="todayDate">Today</span>
     </div>
 </div>
  <!-- <div class="sub"><i class="ti ti-calendar" style="font-size:13px;"></i> June 2026</div> -->
- </div>
- <div class="icon-circle" id="remindersIconBtn" onclick="toggleRemindersPanel()" style="position:relative;cursor:pointer;">
-  <i class="ti-alarm-clock"></i>
-  <span id="reminderUnreadDot" style="display:none;position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#f06464;"></span>
  </div>
  <div class="icon-circle" id="bellIconBtn" onclick="toggleEventLogPanel()" style="position:relative;cursor:pointer;">
   <i class="ti ti-bell"></i>
@@ -1382,7 +1379,17 @@ body.light-theme .flabel, body.light-theme .pemail, body.light-theme .label{ col
  </div>
  </div>
 
- <button class="save-btn" onclick="saveEntry(event)">Save Entry</button>
+ <div style="display:flex;gap:10px;align-items:center;margin-top:8px;">
+  <div id="entryImagePreviewWrap" style="display:none;position:relative;flex:0 0 52px;">
+   <img id="entryImagePreview" style="width:52px;height:52px;border-radius:16px;object-fit:cover;border:1px solid #232838;display:block;cursor:pointer;" onclick="viewEntryImage(pendingEntryImage)">
+   <i class="ti ti-x" onclick="removeEntryImage()" style="position:absolute;top:-6px;right:-6px;background:#f06464;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;"></i>
+  </div>
+  <button type="button" id="entryCameraBtn" onclick="document.getElementById('entryImageInput').click()" style="flex:0 0 52px;height:52px;border:1px solid #232838;border-radius:16px;background:#161a23;color:#8b9099;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+   <i class="ti ti-camera"></i>
+  </button>
+  <input type="file" id="entryImageInput" accept="image/*" capture="environment" style="display:none;" onchange="handleEntryImageSelect(event)">
+  <button class="save-btn" style="margin-top:0;flex:1;" onclick="saveEntry(event)">Save Entry</button>
+ </div>
 
 </div>
 
@@ -1393,6 +1400,10 @@ body.light-theme .flabel, body.light-theme .pemail, body.light-theme .label{ col
  <div class="page-title">Entries</div>
  <div class="search-icons">
  <div class="icon-circle" onclick="toggleSearchBox()"><i class="ti ti-search"></i></div>
+ <div class="icon-circle" id="remindersIconBtn" onclick="toggleRemindersPanel()" style="position:relative;cursor:pointer;">
+  <i class="ti ti-calendar-due"></i>
+  <span id="reminderUnreadDot" style="display:none;position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#f06464;"></span>
+ </div>
  <div class="icon-circle" onclick="openFilterModal()"><i class="ti ti-adjustments-horizontal"></i></div>
  </div>
  </div>
@@ -1457,6 +1468,7 @@ body.light-theme .flabel, body.light-theme .pemail, body.light-theme .label{ col
  <div class="menu-item" onclick="exportDataAsJSON()"><div class="mico"><i class="ti ti-cloud-upload"></i></div><div class="mtext">Backup Data</div><div class="chev"><i class="ti ti-chevron-right"></i></div></div>
  <div class="menu-item" onclick="backupToGoogleDrive()"><div class="mico"><i class="ti ti-brand-google-drive"></i></div><div class="mtext">Backup to Google Drive</div><div class="chev"><i class="ti ti-chevron-right"></i></div></div>
  <div class="menu-item" onclick="triggerRestore()"><div class="mico"><i class="ti ti-cloud-download"></i></div><div class="mtext">Restore Data</div><div class="chev"><i class="ti ti-chevron-right"></i></div></div>
+ <div class="menu-item" onclick="migrateOldEntriesUserId()"><div class="mico"><i class="ti ti-tool"></i></div><div class="mtext">Fix Old Entries (one-time)</div><div class="chev"><i class="ti ti-chevron-right"></i></div></div>
  <div class="menu-item" onclick="toggleTheme()"><div class="mico"><i class="ti ti-moon"></i></div><div class="mtext">Dark / Light Mode</div><div class="chev"><i class="ti ti-chevron-right"></i></div></div>
  <div class="menu-item danger" onclick="openLogoutModal()"><div class="mico"><i class="ti ti-logout"></i></div><div class="mtext">Log out</div><div class="chev"><i class="ti ti-chevron-right"></i></div></div>
 
@@ -1614,7 +1626,7 @@ body.light-theme .flabel, body.light-theme .pemail, body.light-theme .label{ col
 // Firebase Console -> Project Settings -> General -> Your apps -> Web app config
 // ===== FIREBASE CONFIG (initialized lazily after UI paints) =====
 const firebaseConfig = {
-apiKey: "AIzaSyBneDVwogH0WiEmAAvLHu_Tq862DmDOwmI",
+  apiKey: "AIzaSyBneDVwogH0WiEmAAvLHu_Tq862DmDOwmI",
   authDomain: "daytoday-e6646.firebaseapp.com",
   databaseURL: "https://daytoday-e6646-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "daytoday-e6646",
@@ -1623,6 +1635,10 @@ apiKey: "AIzaSyBneDVwogH0WiEmAAvLHu_Tq862DmDOwmI",
   appId: "1:125507121584:web:87dec9292e70d7a919e675",
   measurementId: "G-SK7GX8RVEH"
 };
+// 🔴 REPLACE THE VALUES ABOVE WITH YOUR REAL FIREBASE CONFIG
+// (Firebase Console → Project Settings → General → Your apps → Web app)
+// Without your real values here, cloud sync/login won't work, but the
+// app will at least OPEN instead of failing to load entirely.
 let firebaseReady = false;
 
 // ── Activity tracking for Bell icon & Manage Accounts panel ──
@@ -2773,6 +2789,7 @@ function renderMiniChart(){
 
 function txnRowHTML(e, showEdit){
  const editBtn = showEdit ? `<div style="cursor:pointer;color:#e8b64c;font-size:13px;margin-left:8px;" onclick="openEditModal('${e.id}')"><i class="ti ti-edit"></i></div>` : "";
+ const imgBtn = e.image ? `<div style="cursor:pointer;color:#8b9099;font-size:13px;margin-left:8px;" onclick="viewEntryImage('${e.image}')"><i class="ti ti-camera"></i></div>` : "";
  const partyIcon = getPartyIcon(e.party);
  return `
  <div class="txn">
@@ -2785,6 +2802,7 @@ function txnRowHTML(e, showEdit){
  <div class="amt ${e.type==='expense'?'neg':'pos'}">${fmtAmt(e)}</div>
  <div class="time">${e.time||''}</div>
  </div>
+ ${imgBtn}
  ${editBtn}
  </div>`;
 }
@@ -2864,6 +2882,63 @@ function setEntryType(t){
  document.getElementById("addIncomeBtn").classList.toggle("active", t==="income");
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// ADD-ENTRY: attach a photo (receipt/screenshot) via the camera button
+// ═══════════════════════════════════════════════════════════════════════
+let pendingEntryImage = null; // base64 (compressed) image for the entry currently being created
+
+function handleEntryImageSelect(event) {
+ const file = event.target.files[0];
+ if (!file) return;
+ const reader = new FileReader();
+ reader.onload = (e) => {
+  const img = new Image();
+  img.onload = () => {
+   // Resize/compress so it stays small enough to store as a normal field
+   const maxDim = 900;
+   let { width, height } = img;
+   if (width > maxDim || height > maxDim) {
+    const scale = maxDim / Math.max(width, height);
+    width = Math.round(width * scale);
+    height = Math.round(height * scale);
+   }
+   const canvas = document.createElement('canvas');
+   canvas.width = width; canvas.height = height;
+   canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+   pendingEntryImage = canvas.toDataURL('image/jpeg', 0.6);
+   showEntryImagePreview(pendingEntryImage);
+  };
+  img.src = e.target.result;
+ };
+ reader.readAsDataURL(file);
+ event.target.value = ''; // allow picking the same file again later
+}
+
+function showEntryImagePreview(dataUrl) {
+ const wrap = document.getElementById('entryImagePreviewWrap');
+ const img = document.getElementById('entryImagePreview');
+ const camBtn = document.getElementById('entryCameraBtn');
+ if (wrap && img) { img.src = dataUrl; wrap.style.display = 'block'; }
+ if (camBtn) camBtn.style.display = 'none';
+}
+
+function removeEntryImage() {
+ pendingEntryImage = null;
+ const wrap = document.getElementById('entryImagePreviewWrap');
+ const camBtn = document.getElementById('entryCameraBtn');
+ if (wrap) wrap.style.display = 'none';
+ if (camBtn) camBtn.style.display = '';
+}
+
+function viewEntryImage(url) {
+ if (!url) return;
+ const overlay = document.createElement('div');
+ overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+ overlay.onclick = () => overlay.remove();
+ overlay.innerHTML = `<img src="${url}" style="max-width:100%;max-height:100%;border-radius:12px;">`;
+ document.body.appendChild(overlay);
+}
+
 async function saveEntry(evt){
  // LOCK — prevent duplicate saves on double-tap
  if (isSaving) return;
@@ -2898,7 +2973,9 @@ async function saveEntry(evt){
   date: date,
   time: new Date().toLocaleTimeString("en-IN", {hour:'2-digit', minute:'2-digit'}),
   notes: notes,
-  timestamp: new Date().toISOString()
+  timestamp: new Date().toISOString(),
+  image: pendingEntryImage || null,
+  userId: (currentUser && currentUser.uid) || localStorage.getItem('currentUserUid') || null
  };
 
  // Add to memory ONCE
@@ -2920,6 +2997,7 @@ async function saveEntry(evt){
  document.getElementById("notesInput").value = "";
  document.getElementById("dateInput").value = getLocalDateStr();
  updateDateLabel(document.getElementById("dateInput").value);
+ removeEntryImage();
 
  // Re-render from memory (no reload)
  renderWallet();
@@ -2986,7 +3064,8 @@ async function updateEntry() {
   date: date,
   time: entry.time || new Date().toLocaleTimeString("en-IN"),
   notes: notes,
-  timestamp: new Date().toISOString()
+  timestamp: new Date().toISOString(),
+  userId: entry.userId || (currentUser && currentUser.uid) || localStorage.getItem('currentUserUid') || null
  };
 
  // Update in memory
@@ -3907,6 +3986,57 @@ function triggerRestore() {
  document.getElementById('restoreInput').click();
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// ONE-TIME FIX: tag old entries (saved before the userId bug was fixed)
+// with the current account's uid, so they start showing up on every
+// device again. Safe to run more than once — it only touches documents
+// that don't already have a userId.
+// ═══════════════════════════════════════════════════════════════════════
+async function migrateOldEntriesUserId() {
+ if (!firebaseReady || !db) { showNotification('Firebase not ready yet, try again in a moment', 'error'); return; }
+ if (!currentUser || !currentUser.uid) { showNotification('Please log in again first', 'error'); return; }
+
+ if (!confirm('This will tag all your existing cloud entries with your account, so they show up on every device. Continue?')) return;
+
+ showNotification('Fixing old entries… please wait', 'info');
+
+ try {
+  // NOTE: this reads the WHOLE collection (not filtered by userId), since
+  // the entries we need to fix are exactly the ones missing that field.
+  // This only works if your Firestore rules allow it — if you get a
+  // "Missing or insufficient permissions" error here, the rules need to
+  // temporarily allow reading entries with no userId field.
+  const snapshot = await db.collection('entries').get();
+  let fixedCount = 0;
+  const batch = db.batch();
+
+  snapshot.forEach(doc => {
+   const data = doc.data();
+   if (!data.userId) {
+    batch.update(doc.ref, { userId: currentUser.uid });
+    fixedCount++;
+   }
+  });
+
+  if (fixedCount === 0) {
+   showNotification('No old entries needed fixing ✓', 'success');
+   return;
+  }
+
+  await batch.commit();
+  showNotification(`Fixed ${fixedCount} old entr${fixedCount === 1 ? 'y' : 'ies'} ✓`, 'success');
+
+  // Reload so the newly-tagged entries show up immediately
+  await loadEntriesFromFirebase();
+  dedupeEntries();
+  renderWallet();
+  renderEntries();
+ } catch (err) {
+  console.error('Migration failed:', err);
+  showNotification('Fix failed: ' + err.message, 'error');
+ }
+}
+
 function handleFileSelect(event) {
  const file = event.target.files[0];
  if(!file) return;
@@ -3926,6 +4056,7 @@ function handleFileSelect(event) {
  if(window.firebase && db) {
   try {
    for (const entry of entries) {
+    if (!entry.userId) entry.userId = (currentUser && currentUser.uid) || localStorage.getItem('currentUserUid') || null;
     await db.collection('entries').doc(String(entry.id)).set(entry);
    }
    showNotification('Backup fully restored and synced ✓', 'success');
@@ -4176,6 +4307,21 @@ function pinUnlockApp(){
   const appContainer = document.getElementById('app');
   if (appContainer) appContainer.style.display = 'block';
   updateProfileEmail();
+
+  // Pull this account's entries from the cloud right after unlock.
+  // Without this, a fresh login on a NEW device only ever showed that
+  // device's empty local storage — the cloud data was never fetched
+  // until this point.
+  if (typeof loadEntriesFromFirebase === 'function') {
+    loadEntriesFromFirebase().then(() => {
+      if (typeof dedupeEntries === 'function') dedupeEntries();
+      renderWallet();
+      if (typeof renderEntries === 'function') renderEntries();
+      if (document.getElementById('screen-analytics')?.classList.contains('active') && typeof renderAnalytics === 'function') {
+        renderAnalytics();
+      }
+    }).catch(err => console.warn('Post-unlock cloud sync failed:', err));
+  }
 }
 
 function resetAppPin(){

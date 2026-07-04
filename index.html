@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#0b0e14">
 <title>Tracker</title>
 <!-- app refresh code  -->
-<meta http-equiv="refresh" content="101">
+<meta http-equiv="refresh" content="200">
 
 <!-- Fonts: preconnect + display=swap so text shows instantly with fallback font -->
 <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
@@ -115,23 +115,22 @@ h1,h2,h3,.brand,.amount-big{font-family:'Poppins',sans-serif;}
 #pinLockScreen .pinSub{font-size:15px;color:#7b8aaa;margin-bottom:30px;}
 .pinDots{display:flex;gap:16px;margin-bottom:32px;}
 .pinDots span{width:14px;height:14px;border-radius:50%;border:1.5px solid #c0cad8;background:#fff;transition:.18s ease;}
-.pinDots span.filled{background:#252020c8;border-color:#14181a;box-shadow:0 0 0 4px rgba(58,92,204,.15);transform:scale(1.1);}
+.pinDots span.filled{background:#ffef0c;border-color:#14181a;box-shadow:0 0 0 4px rgba(58,92,204,.15);transform:scale(1.1);}
 .pinPad{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;width:252px;}
 .pinPad button{
-     height: 62px;
-    background: black;
-    color: #ffffff;
-    font-size: 21px;
+    height: 64px;
+    border-radius: 50%;
+    border: 1px solid #1f2430;
+    background: #161a23;
+    color: #f5f6f8;
+    font-size: 20px;
     font-weight: 600;
-    border-radius: 40%;
     cursor: pointer;
     font-family: 'Inter', sans-serif;
-    box-shadow: black;
-    transition: .1s;
 }
 .pinPad button:hover{background:#000000;border-color:#000000;}
 .pinPad button:active{transform:scale(.90);box-shadow:0 1px 4px rgba(30,60,120,.12);}
-.pinPad button.pinClear{font-size:18px;color:#000000;background:transparent;border:none;box-shadow:none;font-weight:600;}
+.pinPad button.pinClear{font-size:18px;color:#ffffff;background:transparent;border:none;box-shadow:none;font-weight:600;}
 .pinPad button.pinClear:hover{color:#3a5ccc;}
 .pinError{color:#e05050;font-size:12.5px;margin-top:16px;height:16px;font-weight:600;}
 
@@ -1206,12 +1205,16 @@ body.light-theme .flabel, body.light-theme .pemail, body.light-theme .label{ col
  <div class="greet">
  <div class="greet">
     <h1 id="greetingText">Morning Dharm</h1>
-    <div class="sub">
+    <div class="sub"> 
         <i class="ti ti-calendar"></i>
         <span id="todayDate">Today</span>
     </div>
 </div>
  <!-- <div class="sub"><i class="ti ti-calendar" style="font-size:13px;"></i> June 2026</div> -->
+ </div>
+ <div class="icon-circle" id="remindersIconBtn" onclick="toggleRemindersPanel()" style="position:relative;cursor:pointer;">
+  <i class="ti-alarm-clock"></i>
+  <span id="reminderUnreadDot" style="display:none;position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#f06464;"></span>
  </div>
  <div class="icon-circle" id="bellIconBtn" onclick="toggleEventLogPanel()" style="position:relative;cursor:pointer;">
   <i class="ti ti-bell"></i>
@@ -1263,7 +1266,7 @@ body.light-theme .flabel, body.light-theme .pemail, body.light-theme .label{ col
  </div>
 
  <div class="month-select" id="monthDropdownBtn" onclick="openMonthDropdown()" style="cursor:pointer;position:relative;">
- <span id="monthDisplay">June 2026</span> <i class="ti ti-chevron-down"></i>
+ <span id="monthDisplay">—</span> <i class="ti ti-chevron-down"></i>
  <div id="monthMenu" style="display:none;position:absolute;top:100%;left:0;right:0;background:#161a23;border:1px solid #1f2430;border-radius:8px;margin-top:8px;z-index:100;max-height:250px;overflow-y:auto;">
  </div>
  </div>
@@ -1611,7 +1614,7 @@ body.light-theme .flabel, body.light-theme .pemail, body.light-theme .label{ col
 // Firebase Console -> Project Settings -> General -> Your apps -> Web app config
 // ===== FIREBASE CONFIG (initialized lazily after UI paints) =====
 const firebaseConfig = {
-   apiKey: "AIzaSyBneDVwogH0WiEmAAvLHu_Tq862DmDOwmI",
+apiKey: "AIzaSyBneDVwogH0WiEmAAvLHu_Tq862DmDOwmI",
   authDomain: "daytoday-e6646.firebaseapp.com",
   databaseURL: "https://daytoday-e6646-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "daytoday-e6646",
@@ -1762,6 +1765,210 @@ function toggleSyncStatusPanel() {
  overlay.style.display = isOpen ? 'none' : 'block';
  panel.style.display = isOpen ? 'none' : 'block';
  if (!isOpen) renderSyncStatusList();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PAYMENT DUE REMINDERS
+// ═══════════════════════════════════════════════════════════════════════
+let paymentReminders = [];
+let reminderDirection = 'outgoing'; // 'outgoing' (Payment) or 'incoming' (Receive)
+let editingReminderId = null;
+
+function loadRemindersFromLocalStorage() {
+ try {
+  const saved = localStorage.getItem('paymentReminders');
+  paymentReminders = saved ? JSON.parse(saved) : [];
+ } catch (err) {
+  console.warn('Failed to load reminders:', err);
+  paymentReminders = [];
+ }
+}
+
+function saveRemindersToLocalStorage() {
+ localStorage.setItem('paymentReminders', JSON.stringify(paymentReminders));
+}
+
+function toggleRemindersPanel() {
+ const overlay = document.getElementById('remindersOverlay');
+ const panel = document.getElementById('remindersPanel');
+ const isOpen = panel.style.display === 'block';
+ overlay.style.display = isOpen ? 'none' : 'block';
+ panel.style.display = isOpen ? 'none' : 'block';
+ if (!isOpen) {
+  renderRemindersList();
+ } else {
+  closeAddReminderForm();
+ }
+}
+
+function setReminderDirection(dir) {
+ reminderDirection = dir;
+ const outBtn = document.getElementById('reminderTypeOutBtn');
+ const inBtn = document.getElementById('reminderTypeInBtn');
+ if (dir === 'outgoing') {
+  outBtn.style.background = 'rgba(240,100,100,.12)'; outBtn.style.color = '#f06464'; outBtn.style.borderColor = '#f06464';
+  inBtn.style.background = 'transparent'; inBtn.style.color = '#8b9099'; inBtn.style.borderColor = '#232838';
+ } else {
+  inBtn.style.background = 'rgba(61,220,132,.12)'; inBtn.style.color = '#3ddc84'; inBtn.style.borderColor = '#3ddc84';
+  outBtn.style.background = 'transparent'; outBtn.style.color = '#8b9099'; outBtn.style.borderColor = '#232838';
+ }
+}
+
+function openAddReminderForm(reminderId) {
+ editingReminderId = reminderId || null;
+ const box = document.getElementById('reminderFormBox');
+ box.style.display = 'block';
+
+ if (editingReminderId) {
+  const r = paymentReminders.find(x => String(x.id) === String(editingReminderId));
+  if (r) {
+   document.getElementById('reminderTitleInput').value = r.title;
+   document.getElementById('reminderAmountInput').value = r.amount;
+   document.getElementById('reminderDueDateInput').value = r.dueDate;
+   document.getElementById('reminderNotesInput').value = r.notes || '';
+   setReminderDirection(r.direction);
+   return;
+  }
+ }
+
+ // Fresh form defaults
+ document.getElementById('reminderTitleInput').value = '';
+ document.getElementById('reminderAmountInput').value = '';
+ document.getElementById('reminderDueDateInput').value = getLocalDateStr();
+ document.getElementById('reminderNotesInput').value = '';
+ setReminderDirection('outgoing');
+}
+
+function closeAddReminderForm() {
+ document.getElementById('reminderFormBox').style.display = 'none';
+ editingReminderId = null;
+}
+
+function saveReminder() {
+ const title = document.getElementById('reminderTitleInput').value.trim();
+ const amount = parseFloat(document.getElementById('reminderAmountInput').value || 0);
+ const dueDate = document.getElementById('reminderDueDateInput').value;
+ const notes = document.getElementById('reminderNotesInput').value.trim();
+
+ if (!title) { showNotification('Enter a party / title', 'error'); return; }
+ if (!amount) { showNotification('Enter an amount', 'error'); return; }
+ if (!dueDate) { showNotification('Pick a due date', 'error'); return; }
+
+ if (editingReminderId) {
+  const r = paymentReminders.find(x => String(x.id) === String(editingReminderId));
+  if (r) {
+   r.title = title; r.amount = amount; r.dueDate = dueDate; r.notes = notes; r.direction = reminderDirection;
+  }
+ } else {
+  paymentReminders.unshift({
+   id: 'r_' + Date.now(),
+   title, amount, dueDate, notes,
+   direction: reminderDirection,
+   paid: false,
+   createdAt: new Date().toISOString()
+  });
+ }
+
+ saveRemindersToLocalStorage();
+ closeAddReminderForm();
+ renderRemindersList();
+ showNotification(editingReminderId ? 'Reminder updated ✓' : 'Reminder added ✓', 'success');
+}
+
+function markReminderPaid(reminderId) {
+ const r = paymentReminders.find(x => String(x.id) === String(reminderId));
+ if (!r) return;
+ r.paid = true;
+ r.paidAt = new Date().toISOString();
+ saveRemindersToLocalStorage();
+ renderRemindersList();
+ showNotification('Marked as paid ✓', 'success');
+}
+
+function markReminderUnpaid(reminderId) {
+ const r = paymentReminders.find(x => String(x.id) === String(reminderId));
+ if (!r) return;
+ r.paid = false;
+ saveRemindersToLocalStorage();
+ renderRemindersList();
+}
+
+function deleteReminder(reminderId) {
+ if (!confirm('Delete this reminder?')) return;
+ paymentReminders = paymentReminders.filter(x => String(x.id) !== String(reminderId));
+ saveRemindersToLocalStorage();
+ renderRemindersList();
+ showNotification('Reminder deleted', 'success');
+}
+
+function updateReminderUnreadDot() {
+ const dot = document.getElementById('reminderUnreadDot');
+ if (!dot) return;
+ const today = getLocalDateStr();
+ const hasDueOrOverdue = paymentReminders.some(r => !r.paid && r.dueDate <= today);
+ dot.style.display = hasDueOrOverdue ? '' : 'none';
+}
+
+function renderRemindersList() {
+ updateReminderUnreadDot();
+ const list = document.getElementById('remindersList');
+ if (!list) return;
+
+ const today = getLocalDateStr();
+ const showPaid = document.getElementById('reminderShowPaidToggle')?.checked;
+
+ let visible = paymentReminders.filter(r => showPaid || !r.paid);
+ // Soonest due date first for unpaid; paid ones (if shown) go to the bottom
+ visible.sort((a, b) => {
+  if (a.paid !== b.paid) return a.paid ? 1 : -1;
+  return a.dueDate.localeCompare(b.dueDate);
+ });
+
+ if (visible.length === 0) {
+  list.innerHTML = '<div class="empty-state" style="padding:30px 0;"><i class="ti ti-calendar-due"></i><br>No reminders yet</div>';
+  return;
+ }
+
+ list.innerHTML = visible.map(r => {
+  const isOverdue = !r.paid && r.dueDate < today;
+  const isDueToday = !r.paid && r.dueDate === today;
+  const color = r.direction === 'incoming' ? '#3ddc84' : '#f06464';
+  const icon = r.direction === 'incoming' ? 'ti-arrow-down-left' : 'ti-arrow-up-right';
+  const dueLabel = new Date(r.dueDate + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  let statusTag = '';
+  if (r.paid) {
+   statusTag = `<span style="color:#3ddc84;font-size:11px;font-weight:600;">Paid</span>`;
+  } else if (isOverdue) {
+   statusTag = `<span style="color:#f06464;font-size:11px;font-weight:700;">Overdue</span>`;
+  } else if (isDueToday) {
+   statusTag = `<span style="color:#f6b042;font-size:11px;font-weight:700;">Due today</span>`;
+  }
+
+  return `<div style="padding:12px 0;border-bottom:1px solid #1c212b;${isOverdue ? 'background:rgba(240,100,100,.05);' : ''}">
+   <div style="display:flex;align-items:flex-start;gap:10px;">
+    <div style="width:32px;height:32px;border-radius:50%;background:${color}1f;color:${color};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ${icon}"></i></div>
+    <div style="flex:1;min-width:0;">
+     <div style="display:flex;justify-content:space-between;gap:8px;">
+      <div style="color:#e8eaf0;font-size:13.5px;font-weight:600;">${r.title}</div>
+      <div style="color:${color};font-size:13.5px;font-weight:700;white-space:nowrap;">₹${Number(r.amount).toLocaleString('en-IN')}</div>
+     </div>
+     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
+      <div style="color:#8b9099;font-size:11.5px;">Due ${dueLabel}</div>
+      ${statusTag}
+     </div>
+     ${r.notes ? `<div style="color:#6b7280;font-size:11.5px;margin-top:4px;">${r.notes}</div>` : ''}
+     <div style="display:flex;gap:14px;margin-top:8px;">
+      ${r.paid
+       ? `<span style="color:#8b9099;font-size:12px;cursor:pointer;" onclick="markReminderUnpaid('${r.id}')">Undo</span>`
+       : `<span style="color:#e8b64c;font-size:12px;cursor:pointer;font-weight:600;" onclick="markReminderPaid('${r.id}')">Mark as paid</span>`}
+      <span style="color:#8b9099;font-size:12px;cursor:pointer;" onclick="openAddReminderForm('${r.id}')">Edit</span>
+      <span style="color:#8b9099;font-size:12px;cursor:pointer;" onclick="deleteReminder('${r.id}')">Delete</span>
+     </div>
+    </div>
+   </div>
+  </div>`;
+ }).join('');
 }
 
 let db = null;
@@ -2207,9 +2414,23 @@ function normalizeType(type) {
  return type || 'expense';
 }
 
+// Get today's date (or any Date object) as a LOCAL YYYY-MM-DD string.
+// IMPORTANT: do NOT use toISOString().split('T')[0] for this — toISOString()
+// converts to UTC first, so for any local time before ~5:30 AM IST it silently
+// rolls the date back to the PREVIOUS day (and on the 1st of a month, to the
+// previous month). That bug was causing entries saved early in the morning to
+// be mis-dated, which then made monthly totals look wrong right when the month changed.
+function getLocalDateStr(d) {
+ const dt = d ? new Date(d) : new Date();
+ const y = dt.getFullYear();
+ const m = String(dt.getMonth() + 1).padStart(2, '0');
+ const day = String(dt.getDate()).padStart(2, '0');
+ return `${y}-${m}-${day}`;
+}
+
 // Normalize date: DD/MM/YYYY → YYYY-MM-DD
 function normalizeDate(date) {
- if(!date) return new Date().toISOString().split('T')[0];
+ if(!date) return getLocalDateStr();
  
  // If already YYYY-MM-DD format
  if(date.includes('-')) return date;
@@ -2220,7 +2441,7 @@ function normalizeDate(date) {
  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
  }
  
- return new Date().toISOString().split('T')[0];
+ return getLocalDateStr();
 }
 
 async function saveEntryToFirebase(entryData) {
@@ -2305,16 +2526,17 @@ async function loadEntriesFromFirebase() {
  const realAuthUser = await new Promise(resolve => {
   if (firebase.auth().currentUser) { resolve(firebase.auth().currentUser); return; }
   const unsub = firebase.auth().onAuthStateChanged(u => { unsub(); resolve(u); });
-  setTimeout(() => resolve(firebase.auth().currentUser), 2500); // fallback timeout
+  setTimeout(() => resolve(firebase.auth().currentUser), 5000); // generous fallback timeout
  });
 
  if (!realAuthUser) {
-  logFirebaseEvent('No active Firebase session — please log in again', 'error');
-  showNotification('Session expired — please log in again', 'error');
-  currentUser = null;
-  localStorage.removeItem('currentUser');
-  localStorage.removeItem('currentUserUid');
-  showGoogleLoginPage();
+  // Don't force a full logout just because Firebase Auth hasn't finished
+  // restoring its session yet (slow network/device, first load, etc.) —
+  // that was logging people out even though they were still legitimately
+  // signed in. Just skip this cloud-sync cycle and keep using local data;
+  // the next periodic sync (or app reopen) will pick things up once the
+  // session is confirmed either way.
+  logFirebaseEvent('Firebase session not confirmed yet — using local data for now', 'warning');
   return;
  }
 
@@ -2386,8 +2608,8 @@ function fmtAmt(e){
 }
 
 function fmtDateLabel(d){
- const today = new Date().toISOString().split('T')[0];
- const yest = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+ const today = getLocalDateStr();
+ const yest = getLocalDateStr(Date.now() - 24 * 60 * 60 * 1000);
  if(d===today) return "Today, " + new Date().toLocaleDateString("en-IN", {weekday: 'short', month: 'short', day: 'numeric'});
  if(d===yest) return "Yesterday, " + new Date().toLocaleDateString("en-IN", {weekday: 'short', month: 'short', day: 'numeric'});
  return new Date(d).toLocaleDateString("en-IN", {day:'numeric', month:'short', year:'numeric'});
@@ -2665,7 +2887,7 @@ async function saveEntry(evt){
   btn.disabled = false; btn.textContent = 'Save Entry'; isSaving = false; return;
  }
 
- const date = document.getElementById("dateInput").value || new Date().toISOString().split('T')[0];
+ const date = document.getElementById("dateInput").value || getLocalDateStr();
 
  const entryData = {
   id: 'e_' + Date.now(),
@@ -2696,7 +2918,7 @@ async function saveEntry(evt){
  document.getElementById("amountDisplay").textContent = "0.00";
  document.getElementById("partySel").value = "";
  document.getElementById("notesInput").value = "";
- document.getElementById("dateInput").value = new Date().toISOString().split('T')[0];
+ document.getElementById("dateInput").value = getLocalDateStr();
  updateDateLabel(document.getElementById("dateInput").value);
 
  // Re-render from memory (no reload)
@@ -3340,17 +3562,20 @@ document.addEventListener('DOMContentLoaded', () => {
  dedupeEntries();
  renderWallet();   // Dashboard — instant
  renderEntries();  // Entries list — instant
+ loadRemindersFromLocalStorage();
+ updateReminderUnreadDot();
  // NOTE: renderAnalytics() skipped here — called lazily when tab opens
 
  // ── STEP 2: Setup UI state ──
  loadCustomParties();
  const dateInputEl = document.getElementById("dateInput");
  if(dateInputEl) {
-   dateInputEl.value = new Date().toISOString().split('T')[0];
+   dateInputEl.value = getLocalDateStr();
    updateDateLabel(dateInputEl.value);
  }
  updateGreeting();
  updateDateDisplay();
+ updateMonthDisplayToCurrent();
  if(pinMode === 'create'){
    const pinTitle = document.getElementById('pinTitleText');
    const pinSub = document.getElementById('pinSubText');
@@ -3415,7 +3640,19 @@ function initFirebase() {
      // own session has been wiped (e.g. by browser tracking-prevention /
      // "Clear site data"), force the user to log in again instead of
      // silently failing every Firestore save with "permission-denied".
+     // Firebase always fires onAuthStateChanged once immediately with whatever
+     // state it has AT THAT INSTANT — which can be `null` for a brief moment
+     // right after page load while it's still restoring the persisted session
+     // from storage. Treating that very first callback as "logged out" was
+     // forcing a real, already-logged-in user back to the login screen on
+     // almost every refresh. We skip that first callback and only act on
+     // GENUINE session-loss events that happen afterwards.
+     let authStateInitialCheckDone = false;
      firebase.auth().onAuthStateChanged(authUser => {
+       if (!authStateInitialCheckDone) {
+         authStateInitialCheckDone = true;
+         return;
+       }
        if (!authUser && currentUser && currentUser.source === 'email') {
          console.warn('⚠ Firebase Auth session lost — forcing re-login');
          logFirebaseEvent('Session lost — please log in again', 'error');
@@ -3480,8 +3717,18 @@ document.addEventListener('visibilitychange', () => {
 
 // ===== RENDER ANALYTICS (called from various places) =====
 function renderAnalytics() {
+ updateMonthDisplayToCurrent();
  renderCharts();
  renderTopCats();
+}
+
+// Keep the "Month" label in Analytics showing the ACTUAL current month/year
+// instead of a fixed/stale value. (The underlying charts already compute
+// stats for the real current month — this just keeps the label in sync.)
+function updateMonthDisplayToCurrent() {
+ const el = document.getElementById('monthDisplay');
+ if (!el) return;
+ el.textContent = new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 }
 
 // ===== PARTY MANAGER =====
@@ -4514,6 +4761,42 @@ window.addEventListener('offline', () => {
  <div id="syncAccountInfo" style="padding:14px 16px;border-bottom:1px solid #1f2430;"></div>
  <div id="syncStatusSummary" style="padding:14px 16px;border-bottom:1px solid #1f2430;font-size:13px;color:#8b9099;"></div>
  <div id="syncStatusList" style="padding:10px 14px;"></div>
+</div>
+
+<!-- ===== Payment Due Reminders Panel ===== -->
+<div id="remindersOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9500;" onclick="toggleRemindersPanel()"></div>
+<div id="remindersPanel" style="display:none;position:fixed;top:0;right:0;bottom:0;width:88%;max-width:340px;background:#11151c;z-index:9501;box-shadow:-8px 0 24px rgba(0,0,0,.4);overflow-y:auto;">
+ <div style="padding:18px 16px;border-bottom:1px solid #1f2430;display:flex;align-items:center;justify-content:space-between;">
+  <div style="color:#fff;font-weight:700;font-size:16px;">Payment Reminders</div>
+  <div style="display:flex;align-items:center;gap:14px;">
+   <i class="ti ti-plus" style="color:#e8b64c;cursor:pointer;font-size:19px;" onclick="openAddReminderForm()"></i>
+   <i class="ti ti-x" style="color:#8b9099;cursor:pointer;font-size:18px;" onclick="toggleRemindersPanel()"></i>
+  </div>
+ </div>
+
+ <!-- Add / edit reminder form (hidden by default) -->
+ <div id="reminderFormBox" style="display:none;padding:16px;border-bottom:1px solid #1f2430;">
+  <div style="display:flex;gap:8px;margin-bottom:10px;">
+   <button type="button" id="reminderTypeOutBtn" onclick="setReminderDirection('outgoing')" style="flex:1;padding:9px 0;border-radius:8px;border:1px solid #f06464;background:rgba(240,100,100,.12);color:#f06464;font-size:12.5px;font-weight:600;cursor:pointer;">Outgoing (Payment)</button>
+   <button type="button" id="reminderTypeInBtn" onclick="setReminderDirection('incoming')" style="flex:1;padding:9px 0;border-radius:8px;border:1px solid #232838;background:transparent;color:#8b9099;font-size:12.5px;font-weight:600;cursor:pointer;">Incoming (Receive)</button>
+  </div>
+  <input id="reminderTitleInput" type="text" placeholder="Party / title (e.g. Electricity Bill)" style="width:100%;box-sizing:border-box;padding:10px 12px;margin-bottom:8px;border-radius:8px;border:1px solid #232838;background:#0d1117;color:#e8eaf0;font-size:13.5px;">
+  <input id="reminderAmountInput" type="number" placeholder="Amount" style="width:100%;box-sizing:border-box;padding:10px 12px;margin-bottom:8px;border-radius:8px;border:1px solid #232838;background:#0d1117;color:#e8eaf0;font-size:13.5px;">
+  <label style="display:block;color:#8b9099;font-size:11.5px;margin-bottom:4px;">Due date</label>
+  <input id="reminderDueDateInput" type="date" style="width:100%;box-sizing:border-box;padding:10px 12px;margin-bottom:8px;border-radius:8px;border:1px solid #232838;background:#0d1117;color:#e8eaf0;font-size:13.5px;">
+  <textarea id="reminderNotesInput" placeholder="Notes (optional)" rows="2" style="width:100%;box-sizing:border-box;padding:10px 12px;margin-bottom:10px;border-radius:8px;border:1px solid #232838;background:#0d1117;color:#e8eaf0;font-size:13.5px;resize:vertical;"></textarea>
+  <div style="display:flex;gap:8px;">
+   <button type="button" onclick="closeAddReminderForm()" style="flex:1;padding:10px 0;border-radius:8px;border:1px solid #232838;background:transparent;color:#8b9099;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+   <button type="button" onclick="saveReminder()" style="flex:1;padding:10px 0;border-radius:8px;border:none;background:#e8b64c;color:#11151c;font-size:13px;font-weight:700;cursor:pointer;">Save Reminder</button>
+  </div>
+ </div>
+
+ <div style="padding:12px 16px 4px;display:flex;align-items:center;gap:6px;">
+  <input type="checkbox" id="reminderShowPaidToggle" onchange="renderRemindersList()" style="accent-color:#e8b64c;">
+  <label for="reminderShowPaidToggle" style="color:#8b9099;font-size:12px;cursor:pointer;">Show paid reminders</label>
+ </div>
+
+ <div id="remindersList" style="padding:6px 14px 20px;"></div>
 </div>
 
 </body>
